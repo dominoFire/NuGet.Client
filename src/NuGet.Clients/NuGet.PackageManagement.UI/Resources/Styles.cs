@@ -11,7 +11,7 @@ namespace NuGet.PackageManagement.UI
     public static class Styles
     {
         [Browsable(false)]
-        public static object ThemedComboStyleKey => VsResourceKeys.ThemedDialogComboBoxStyleKey ?? typeof(ComboBox);
+        public static object ThemedComboStyleKey => typeof(ComboBox);
 
         [Browsable(false)]
         public static object ScrollBarStyleKey => VsResourceKeys.ScrollBarStyleKey ?? typeof(ScrollBar);

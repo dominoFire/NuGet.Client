@@ -343,6 +343,7 @@
             Padding="1"
             SnapsToDevicePixels="true">
             <ScrollViewer
+              x:Name="scroll"
               Template="{StaticResource ScrollViewerWithScrollBarExtraLargeOnTop}"
               Focusable="false"
               Padding="{TemplateBinding Padding}">

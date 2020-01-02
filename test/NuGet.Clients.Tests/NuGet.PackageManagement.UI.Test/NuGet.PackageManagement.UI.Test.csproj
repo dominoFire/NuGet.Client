@@ -35,7 +35,7 @@
     <Compile Include="PackageLicenseUtilitiesTests.cs" />
     <Compile Include="PackageManagerListItemsTest.cs" />
     <Compile Include="PackageManagerProviderTest.cs" />
-    <Compile Include="XyzTests.cs" />
+    <Compile Include="Xamls\PackageItemControlTests.cs" />
     <Compile Include="TestPackageManagerProviders.cs" />
     <Compile Include="WpfFactAttribute.cs" />
     <Compile Include="WpfFactDiscoverer.cs" />
@@ -43,6 +43,7 @@
     <Compile Include="WpfTheoryAttribute.cs" />
     <Compile Include="WpfTheoryDiscoverer.cs" />
     <Compile Include="Xamls\InfiniteScrollListTests.cs" />
+    <Compile Include="XUnitNuGetUILogger.cs" />
   </ItemGroup>
 
   <ItemGroup>

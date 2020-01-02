@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Threading;
@@ -12,13 +13,22 @@ using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
 using NuGet.VisualStudio;
 using Xunit;
+using NuGet.Configuration;
+using Xunit.Abstractions;
+using NuGet.Protocol;
+using System.Collections.ObjectModel;
+using System.Windows.Media;
 
 namespace NuGet.PackageManagement.UI.Test
 {
     public class InfiniteScrollListTests
     {
-        public InfiniteScrollListTests()
+        private readonly ITestOutputHelper output;
+
+        public InfiniteScrollListTests(ITestOutputHelper output)
         {
+            this.output = output;
+
             var joinableTaskContext = new JoinableTaskContext(Thread.CurrentThread, SynchronizationContext.Current);
 
             NuGetUIThreadHelper.SetCustomJoinableTaskFactory(joinableTaskContext.Factory);
@@ -257,6 +267,93 @@ namespace NuGet.PackageManagement.UI.Test
                 Assert.Null(errorMessage);
 
                 loader.Verify();
+            }
+        }
+
+
+        // create the view models and pass it on
+        [WpfFact]
+        public void ScrollingBug_Repro_Fixed()
+        {
+            var urls = new string[]
+            {
+                "https://api.nuget.org/v3-flatcontainer/system.xml.xmldocument/4.3.0/icon",
+                "https://www.nuget.org/Content/gallery/img/default-package-icon.svg",
+                "https://api.nuget.org/v3-flatcontainer/serilog/2.9.1-dev-01154/icon",
+                "https://api.nuget.org/v3-flatcontainer/microsoft.data.odata/5.8.4/icon",
+                "https://api.nuget.org/v3-flatcontainer/awssdk.core/3.3.104.11/icon",
+                "https://raw.github.com/App-vNext/Polly/master/Polly.png",
+                "https://example.url/no-icon.png"
+            };
+
+            var items = urls.Select((i) => new PackageItemListViewModel() { IconUrl = new Uri(i) });
+            var itemsObs = new ObservableCollection<PackageItemListViewModel>(items);
+
+            var list = new InfiniteScrollList();
+            list.DataContext = itemsObs;
+
+            var listResource = list.FindName("_list") as InfiniteScrollListBox;
+            var listTemplate = listResource.Template;
+            var scroll = listTemplate.FindName("Bd", listResource);
+
+            Assert.NotNull(listResource);
+        }
+
+        // simulate a real search
+        // do scroll up and down
+        // intercept the event
+        // seee results
+        [WpfFact]
+        public async Task ScrollBug_Repro_Search()
+        {
+            output.WriteLine("hola");
+            var uiLogger = new XUnitNuGetUILogger(output);
+
+            var solutionManager = Mock.Of<IVsSolutionManager>();
+            var uiContext = Mock.Of<INuGetUIContext>();
+            Mock.Get(uiContext)
+                .Setup(x => x.SolutionManager)
+                .Returns(solutionManager);
+
+            var packageSource = new PackageSource("https://api.nuget.org/v3/index.json");
+            var sourceRepository = Repository.Factory.GetCoreV3(packageSource.Source);
+
+            var sourceRepos = new SourceRepository[] {
+                sourceRepository
+            };
+
+            var feed = new MultiSourcePackageFeed(
+                sourceRepositories: sourceRepos,
+                logger: uiLogger,
+                telemetryService: null);
+
+            var loadCtx = new PackageLoadContext(
+                sourceRepositories: sourceRepos,
+                isSolution: false,
+                uiContext: uiContext);
+
+            var loader = new PackageItemLoader(
+                context: loadCtx,
+                packageFeed: feed,
+                searchText: "*",
+                includePrerelease: true);
+
+            var tokenSource = new CancellationTokenSource();
+
+            var searchTask = loader.SearchAsync(continuationToken: null, tokenSource.Token);
+
+            using (var jtc = new JoinableTaskContext(Thread.CurrentThread, SynchronizationContext.Current))
+            {
+                var list = new InfiniteScrollList(new Lazy<JoinableTaskFactory>( () => jtc.Factory ));
+
+                await list.LoadItemsAsync(
+                    loader: loader,
+                    loadingMessage: "... (test) Loading ...",
+                    logger: uiLogger,
+                    searchResultTask: searchTask, // no search
+                    token: tokenSource.Token);
+
+                Assert.True(list.PackageItems.Count() > 0);
             }
         }
     }
