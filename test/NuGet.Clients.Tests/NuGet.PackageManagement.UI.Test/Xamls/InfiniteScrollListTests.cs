@@ -18,6 +18,10 @@ using Xunit.Abstractions;
 using NuGet.Protocol;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using System.Windows;
+using System.IO;
+using System.Text;
+using System.Windows.Controls;
 
 namespace NuGet.PackageManagement.UI.Test
 {
@@ -286,19 +290,48 @@ namespace NuGet.PackageManagement.UI.Test
                 "https://example.url/no-icon.png"
             };
 
-            var items = urls.Select((i) => new PackageItemListViewModel() { IconUrl = new Uri(i) });
+            var items = urls.Select((i) => new PackageItemListViewModel()
+            {
+                IconUrl = new Uri(i),
+                Id = "TestPackage"
+            });
             var itemsObs = new ObservableCollection<PackageItemListViewModel>(items);
 
             var list = new InfiniteScrollList();
-            list.DataContext = itemsObs;
+            list.ApplyTemplate();
+            var listBox = list.FindName("_list") as InfiniteScrollListBox;
+            listBox.ItemsSource = itemsObs;
+            listBox.ApplyTemplate();
+            var listTemplate = listBox.Template;
+            var scrollControl = listTemplate.FindName("scroll", listBox) as ScrollViewer;
 
-            var listResource = list.FindName("_list") as InfiniteScrollListBox;
-            var listTemplate = listResource.Template;
-            var scroll = listTemplate.FindName("Bd", listResource);
+            Assert.NotNull(listBox);
+            Assert.NotNull(scrollControl);
 
-            Assert.NotNull(listResource);
+            for(int i = 0; i < 100; i++)
+                scrollControl.PageDown();
+
+            for (int i = 0; i < 30; i++)
+                scrollControl.PageUp();
+
+            NavigateTree(listBox, 0);
         }
 
+        private void NavigateTree(DependencyObject dObj, int depth)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Insert(0, " ", depth);
+            sb.Append(dObj);
+            output.WriteLine(sb.ToString());
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(dObj); i++)
+            {
+                var child = VisualTreeHelper.GetChild(dObj, i);
+                NavigateTree(child, depth + 1);
+            }
+        }
+
+        /*
         // simulate a real search
         // do scroll up and down
         // intercept the event
@@ -356,5 +389,6 @@ namespace NuGet.PackageManagement.UI.Test
                 Assert.True(list.PackageItems.Count() > 0);
             }
         }
+        */
     }
 }
